@@ -24,15 +24,17 @@ public:
     void prepare(float newSampleRate)
     {
         sampleRate = newSampleRate;
+        envCoeff = 1.0f - std::exp(-1.0f / (0.045f * sampleRate));
         feedbackSmoother.setCutoff(12000.0f, sampleRate);
         preSatFilter.setCutoff(8000.0f, sampleRate);
         postSatFilter.setCutoff(10000.0f, sampleRate);
+        setCoefficients(cutoffFrequency, resonance);
     }
 
     void setCoefficients(float freqHz, float res)
     {
         cutoffFrequency = juce::jlimit(20.0f, sampleRate * 0.49f, freqHz);
-        resonance = res;
+        resonance = juce::jmax(0.001f, res);
 
         g = std::tan(juce::MathConstants<float>::pi * cutoffFrequency / sampleRate);
         R2 = 1.0f / resonance;
@@ -48,7 +50,7 @@ public:
         float s2sat = AnalogDSP::saturateAsymmetric(s2);
 
         // Level-dependent resonance: envelope follower modulates R2
-        levelTracker += 0.0005f * (std::abs(input) - levelTracker);
+        levelTracker += envCoeff * (std::abs(input) - levelTracker);
         float R2mod = R2 * (1.0f + levelTracker * 0.08f);
         float hMod = 1.0f / (1.0f + R2mod * g + g * g);
 
@@ -82,6 +84,7 @@ public:
 private:
     float s1 = 0.0f, s2 = 0.0f;
     float g = 0.0f, R2 = 0.0f;
+    float envCoeff = 0.0f;
     float levelTracker = 0.0f;
     float cutoffFrequency = 1000.0f;
     float resonance = 0.707f;

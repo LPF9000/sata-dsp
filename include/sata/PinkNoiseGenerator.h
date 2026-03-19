@@ -2,7 +2,8 @@
   ==============================================================================
 
     PinkNoiseGenerator.h
-    Voss-McCartney pink noise generator (3 octave bands).
+    Pink noise generator using Paul Kellett filtered white noise
+    with octave-rate scheduling (3 bands).
 
     Part of sata-dsp — header-only DSP building blocks for JUCE audio plugins.
 
