@@ -2,8 +2,9 @@
   ==============================================================================
 
     OnePoleFilter.h
-    Simple one-pole lowpass for envelope following, DC blocking,
-    pre/post saturation filtering, and feedback smoothing.
+    Simple one-pole lowpass for envelope following, smoothing,
+    pre/post saturation filtering, and spectral splitting.
+    (Subtract output from input to create a DC blocker or highpass.)
 
     Part of sata-dsp — header-only DSP building blocks for JUCE audio plugins.
 

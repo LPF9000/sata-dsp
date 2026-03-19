@@ -22,7 +22,7 @@ All components are **header-only by design** — per-sample DSP functions must b
 |--------|-------|-------------|
 | [`Saturators.h`](#saturatorsh) | `AnalogDSP` | Rational waveshaping functions — symmetric and asymmetric |
 | [`OnePoleFilter.h`](#onepolefilterh) | `OnePoleFilter` | One-pole lowpass for envelopes, smoothing, and spectral splitting |
-| [`PinkNoiseGenerator.h`](#pinknoisegeneratorh) | `PinkNoiseGenerator` | Voss-McCartney pink noise generator (3 octave bands) |
+| [`PinkNoiseGenerator.h`](#pinknoisegeneratorh) | `PinkNoiseGenerator` | Pink noise generator — Paul Kellett filtered white noise (3 bands) |
 | [`AnalogSVF.h`](#analogsvfh) | `AnalogSVF` | Nonlinear state variable filter with saturated feedback |
 
 ---
@@ -41,7 +41,7 @@ Transfer function:   f(x) = x(27 + x²) / (27 + 9x²)
 
 ```
 Output
-  1.0 ┤                          ·····························
+ ~1.0 ┤                          ·····························
       │                    ·····
       │                ····
       │             ···
@@ -61,16 +61,16 @@ Output
       │             ···
       │                ····
       │                    ·····
- -1.0 ┤                          ·····························
+~-1.0 ┤                          ·····························
       └──────────────────────────────────────────────────────
      -5.0                       0.0                        5.0
 ```
 
 **Characteristics:**
 - Unity gain at origin — `f(0) = 0`, `f'(0) = 1`
-- Soft limiting toward ±1.0 at high input levels
+- Soft saturation — approaches ±1.0 near |x| = 3, then grows slowly (slope 1/9 for large |x|)
 - No even harmonics — preserves spectral symmetry
-- Zero-crossing is smooth (no kink like `tanh`)
+- Wider linear region than `tanh` — gentler onset of compression
 
 ```cpp
 float shaped = AnalogDSP::saturate(input * drive) / drive;
@@ -87,7 +87,7 @@ Transfer function:   f(x) = x(27 + x²) / (27 + 9x²)    for x >= 0
 
 ```
 Output
-  1.0 ┤                          ·····························
+ ~1.0 ┤                          ·····························
       │                    ·····
       │                ····
       │             ···
@@ -107,9 +107,12 @@ Output
       │            ···
       │               ·····
       │                    ·······
- -0.9 ┤                          ·····························
+~-1.0 ┤                          ·····························
       └──────────────────────────────────────────────────────
      -5.0                       0.0                        5.0
+
+      Note: negative half saturates ~10% harder (reaches ±1.0
+      sooner). Both branches grow slowly beyond ±1.0 for |x| > 3.
 ```
 
 **Characteristics:**
@@ -134,7 +137,7 @@ float warm = AnalogDSP::saturateAsymmetric(input * 6.0f) / 6.0f;
 
 ## OnePoleFilter.h
 
-A minimal one-pole IIR lowpass filter. Despite its simplicity, this is one of the most versatile building blocks in audio DSP — it appears inside envelope followers, smoothing filters, DC blockers, spectral splitters, and feedback networks.
+A minimal one-pole IIR lowpass filter. Despite its simplicity, this is one of the most versatile building blocks in audio DSP — it appears inside envelope followers, smoothing filters, spectral splitters, and feedback networks. Subtract the output from the input to create a complementary highpass or DC blocker.
 
 ### Signal Flow
 
@@ -218,7 +221,7 @@ float smoothedParam = smoother.process(rawParam);
 
 ## PinkNoiseGenerator.h
 
-A **Voss-McCartney** pink noise generator using 3 octave bands. Produces noise with a **-3 dB/octave** spectral slope, matching the frequency distribution of most natural and musical signals. This makes it ideal for adding analog-style noise floors that sit naturally in a mix.
+A pink noise generator using **Paul Kellett** filtered white noise with octave-rate scheduling across 3 bands. Produces noise with an approximate **-3 dB/octave** spectral slope, matching the frequency distribution of most natural and musical signals. This makes it ideal for adding analog-style noise floors that sit naturally in a mix.
 
 ### Power Spectral Density
 
@@ -250,18 +253,19 @@ A **Voss-McCartney** pink noise generator using 3 octave bands. Produces noise w
 
 ### How It Works
 
-The Voss-McCartney algorithm generates pink noise by summing multiple random generators updated at different rates — each "octave band" updates half as often as the one above it.
+Each band applies a one-pole recursive filter (`b = decay * b + noise * gain`) with Paul Kellett's coefficients, shaped to approximate -3 dB/octave. Bands are updated at octave-spaced rates (every 1st, 2nd, 4th sample) to further shape the spectrum.
 
 ```
   Sample:   0  1  2  3  4  5  6  7  8  ...
             ┌──┬──┬──┬──┬──┬──┬──┬──┬──
-  b0        ■  ■  ■  ■  ■  ■  ■  ■  ■    ← updated every sample
-  b1        ■     ■     ■     ■     ■      ← updated every 2nd sample
-  b2        ■           ■           ■      ← updated every 4th sample
+  b0        ■  ■  ■  ■  ■  ■  ■  ■  ■    ← filtered every sample
+  b1        ■     ■     ■     ■     ■      ← filtered every 2nd sample
+  b2        ■           ■           ■      ← filtered every 4th sample
             └──┴──┴──┴──┴──┴──┴──┴──┴──
   output  = (b0 + b1 + b2) × scale
 
-  Each band uses exponential decay (0.999×) for smooth transitions.
+  Each band uses a recursive filter (e.g. b0 = 0.99886 * b0 + white * 0.0555)
+  for smooth spectral shaping between updates.
 ```
 
 ### API
