@@ -1,26 +1,43 @@
 /*
-  ==============================================================================
+============================================================
+                         LPF9000
+============================================================
 
-    AnalogSVF.h
-    Custom SVF with nonlinear feedback — mirrors JUCE StateVariableTPTFilter
-    topology but injects saturation at specific points. Mono (one instance
-    per channel).
+ _       ______ _______ ____   ______  ______  ______ 
+/ /     (_____ (_______) __ \ / __   |/ __   |/ __   |
+/ /      _____) )____ ( (__) ) | //| | | //| | | //| |
+/ /     |  ____/  ___) \__  /| |// | | |// | | |// | |
+/ /_____| |    | |       / / |  /__| |  /__| |  /__| |
+/_______)_|    |_|      /_/   \_____/ \_____/ \_____/ 
 
-    Part of sata-dsp — header-only DSP building blocks for JUCE audio plugins.
-
-  ==============================================================================
+============================================================
 */
+
+/**
+ * @file AnalogSVF.h
+ * @brief Declares a nonlinear state-variable filter used by LPF9000 analog processing stages.
+ */
 
 #pragma once
 
 #include "OnePoleFilter.h"
 #include "Saturators.h"
 
+/**
+ * @brief Mono state-variable filter with saturation-aware state updates and nonlinear feedback shaping.
+ */
 class AnalogSVF
 {
 public:
+    /**
+     * @brief Output mode for the state-variable filter.
+     */
     enum class Type { lowpass, highpass };
 
+    /**
+     * @brief Prepares the filter for a new sample rate.
+     * @param newSampleRate Active sample rate in hertz.
+     */
     void prepare(float newSampleRate)
     {
         sampleRate = newSampleRate;
@@ -31,6 +48,11 @@ public:
         setCoefficients(cutoffFrequency, resonance);
     }
 
+    /**
+     * @brief Updates cutoff and resonance coefficients.
+     * @param freqHz Cutoff frequency in hertz.
+     * @param res Resonance amount.
+     */
     void setCoefficients(float freqHz, float res)
     {
         cutoffFrequency = juce::jlimit(20.0f, sampleRate * 0.49f, freqHz);
@@ -40,8 +62,17 @@ public:
         R2 = 1.0f / resonance;
     }
 
+    /**
+     * @brief Selects the output response to return from processing.
+     * @param newType Desired response type.
+     */
     void setType(Type newType) { type = newType; }
 
+    /**
+     * @brief Processes one sample through the nonlinear state-variable filter.
+     * @param input Input sample.
+     * @return Filtered output sample.
+     */
     float processSample(float input)
     {
         // Stage 1: Saturate state variables before HP calculation
@@ -71,6 +102,9 @@ public:
         return (type == Type::lowpass) ? yLP : yHP;
     }
 
+    /**
+     * @brief Resets all internal state and helper filters.
+     */
     void reset()
     {
         s1 = 0.0f;
@@ -82,16 +116,27 @@ public:
     }
 
 private:
+    /** @brief First integrator state. */
     float s1 = 0.0f, s2 = 0.0f;
+    /** @brief Precomputed TPT coefficient and reciprocal resonance term. */
     float g = 0.0f, R2 = 0.0f;
+    /** @brief Envelope coefficient for level-dependent resonance tracking. */
     float envCoeff = 0.0f;
+    /** @brief Running level estimate used to modulate resonance. */
     float levelTracker = 0.0f;
+    /** @brief Cached cutoff frequency in hertz. */
     float cutoffFrequency = 1000.0f;
+    /** @brief Cached resonance value. */
     float resonance = 0.707f;
+    /** @brief Active sample rate in hertz. */
     float sampleRate = 44100.0f;
+    /** @brief Currently selected filter output type. */
     Type type = Type::lowpass;
 
+    /** @brief Smoothing filter applied to the saturated feedback state. */
     OnePoleFilter feedbackSmoother;
+    /** @brief Prefilter before the band-pass saturation stage. */
     OnePoleFilter preSatFilter;
+    /** @brief Postfilter after the band-pass saturation stage. */
     OnePoleFilter postSatFilter;
 };
