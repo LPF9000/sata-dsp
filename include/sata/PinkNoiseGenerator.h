@@ -1,22 +1,38 @@
 /*
-  ==============================================================================
+============================================================
+                         LPF9000
+============================================================
 
-    PinkNoiseGenerator.h
-    Pink noise generator using Paul Kellett filtered white noise
-    with octave-rate scheduling (3 bands).
+ _       ______ _______ ____   ______  ______  ______ 
+/ /     (_____ (_______) __ \ / __   |/ __   |/ __   |
+/ /      _____) )____ ( (__) ) | //| | | //| | | //| |
+/ /     |  ____/  ___) \__  /| |// | | |// | | |// | |
+/ /_____| |    | |       / / |  /__| |  /__| |  /__| |
+/_______)_|    |_|      /_/   \_____/ \_____/ \_____/ 
 
-    Part of sata-dsp — header-only DSP building blocks for JUCE audio plugins.
-
-  ==============================================================================
+============================================================
 */
+
+/**
+ * @file PinkNoiseGenerator.h
+ * @brief Declares a compact pink-noise generator used by LPF9000 analog coloration paths.
+ */
 
 #pragma once
 
 #include <JuceHeader.h>
 
+/**
+ * @brief Pink-noise generator based on octave-rate filtered white-noise updates.
+ */
 class PinkNoiseGenerator
 {
 public:
+    /**
+     * @brief Generates the next pink-noise sample.
+     * @param rng Random generator supplying white-noise input.
+     * @return Pink-noise output sample.
+     */
     float nextSample(juce::Random& rng)
     {
         // b0 updated every sample, b1 every 2nd, b2 every 4th
@@ -34,6 +50,9 @@ public:
         return (b0 + b1 + b2) * 0.00125f;  // scaled to ~0.00025 peak
     }
 
+    /**
+     * @brief Resets the internal noise-generator state.
+     */
     void reset()
     {
         b0 = 0.0f;
@@ -43,6 +62,8 @@ public:
     }
 
 private:
+    /** @brief Filter state for the fastest-updating pink-noise band. */
     float b0 = 0.0f, b1 = 0.0f, b2 = 0.0f;
+    /** @brief Counter controlling octave-rate updates of the slower bands. */
     unsigned int counter = 0;
 };
