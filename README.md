@@ -16,6 +16,8 @@
 
 All components are **header-only by design** — per-sample DSP functions must be visible at the call site for the compiler to inline them. This follows the same convention used by JUCE's own `dsp` module.
 
+Visit my website: https://satalabs.xyz
+
 ## Components
 
 | Header | Class | Description |
