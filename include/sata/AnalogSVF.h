@@ -41,10 +41,11 @@ public:
     void prepare(float newSampleRate)
     {
         sampleRate = newSampleRate;
+        const float nyquist = sampleRate * 0.49f;
         envCoeff = 1.0f - std::exp(-1.0f / (0.045f * sampleRate));
-        feedbackSmoother.setCutoff(12000.0f, sampleRate);
-        preSatFilter.setCutoff(8000.0f, sampleRate);
-        postSatFilter.setCutoff(10000.0f, sampleRate);
+        feedbackSmoother.setCutoff(juce::jmin(12000.0f, nyquist), sampleRate);
+        preSatFilter.setCutoff(juce::jmin(8000.0f, nyquist), sampleRate);
+        postSatFilter.setCutoff(juce::jmin(10000.0f, nyquist), sampleRate);
         setCoefficients(cutoffFrequency, resonance);
     }
 
